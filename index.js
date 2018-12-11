@@ -7,8 +7,18 @@ const app = express().use(bodyParser.json()); // creates express http server
 const request = require('request');
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const sendAPIUrl = "https://graph.facebook.com/v2.6/me/messages";
+const sendAPIUrl = process.env.SEND_API_URL;
+const serverAPIUrl = process.env.SERVER_API_URL;
 
+if (PAGE_ACCESS_TOKEN === undefined) {
+  throw new Error('Cannot find environment variable PAGE_ACCESS_TOKEN with Facebook Page access token');
+}
+if (sendAPIUrl === undefined) {
+  throw new Error('Cannot find environment variable SEND_API_URL with Facebook send api url');
+}
+if (serverAPIUrl === undefined) {
+  throw new Error(`Cannot find environment variable SERVER_API_URL with url of cirichat-server`)
+}
 // Sets server port and logs message on success
 app.listen(process.env.PORT || 8080, () => console.log('app is listening'));
 
@@ -77,20 +87,34 @@ app.get('/webhook', (req, res) => {
   
 // Handles messages events
 function handleMessage(sender_psid, received_message) {
-  
-  let response;
 
   // Check if the message contains text
   if (received_message.text) {    
+    // If it does than we call cirichat-server and get response to that question
+    let question = received_message.text;
+    request({
+      "uri": serverAPIUrl,
+      "method": "POST",
+      "json": { question: question }
+    }, (err, res, body) => {
+      if (!err) {
+        console.log(`Question '${question}' received answer '${body}'`)
+        
+        // Create the payload for a basic text message
+        let response = {
+          "text": body
+        };
 
-    // Create the payload for a basic text message
-    response = {
-      "text": `Response to the message: "${received_message.text}"`
-    }
+        // Sends the response message
+        callSendAPI(sender_psid, response);
+
+      } else {
+        console.log(`Error: could not receive answer to question '${question}'`)
+      }
+    });
+
   }  
   
-  // Sends the response message
-  callSendAPI(sender_psid, response);
 }
 
 // Sends response messages via the Send API
