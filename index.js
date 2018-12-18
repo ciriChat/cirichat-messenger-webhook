@@ -90,26 +90,27 @@ function handleMessage(sender_psid, received_message) {
 
   // Check if the message contains text
   if (received_message.text) {    
-    // If it does than we call cirichat-server and get response to that question
-    let question = received_message.text;
+    // If it does than we call cirichat-server and get response to that message
+    let message = received_message.text;
     request({
       "uri": serverAPIUrl,
       "method": "POST",
-      "json": { question: question }
+      "json": { message: message }
     }, (err, res, body) => {
       if (!err) {
-        console.log(`Question '${question}' received answer '${body}'`)
+        let resp = body.response;
+        console.log(`Message '${message}' received response '${resp}'`)
         
         // Create the payload for a basic text message
         let response = {
-          "text": body
+          "text": resp
         };
 
         // Sends the response message
         callSendAPI(sender_psid, response);
 
       } else {
-        console.log(`Error: could not receive answer to question '${question}'`)
+        console.log(`Error: could not receive response to message '${message}'`)
       }
     });
 
